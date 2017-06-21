@@ -12,7 +12,7 @@
 //   }
 // }
 
-void changePos(int where, int* i, int* j) {
+inline static void changePos(int where, int* i, int* j) {
   switch (where) {
     case 0: (*j)++; break;
     case 1: (*i)++; break;
@@ -21,7 +21,7 @@ void changePos(int where, int* i, int* j) {
   }
 }
 
-void move(int where, int* i, int* j, char A[N][N]) {
+inline static void move(int where, int* i, int* j, char A[N][N]) {
   while(1) {
     changePos(where, i, j);
     switch(A[*i][*j]){
@@ -34,41 +34,43 @@ void move(int where, int* i, int* j, char A[N][N]) {
   }
 }
 
-int reverseDir(int dir) {
-  return (dir+2)%4;
+char solve_r(char A[N][N], int i, int j, int dir, int lcnt, int ccnt);
+
+inline static char mirror45(char A[N][N], int i, int j, int dir, int lcnt, int ccnt) {
+  A[i][j] = '/';
+  return solve_r(A, i, j, dir^3, lcnt-1, ccnt);
 }
 
-char mirror(int from, int to) {
-  if(from == to) return '|';
-  else if((from ^ to) == 1) return '\\';
-  else return '/';
+inline static char mirror135(char A[N][N], int i, int j, int dir, int lcnt, int ccnt) {
+  A[i][j] = '\\';
+  return solve_r(A, i, j, dir^1, lcnt-1, ccnt);
+}
+
+inline static char mirror90(char A[N][N], int i, int j, int dir, int lcnt, int ccnt) {
+  A[i][j] = '|';
+  if(solve_r(A, i, j, dir, lcnt, ccnt)) {
+    A[i][j] = ' ';
+    return 1;
+  } else {
+    return 0;
+  }
 }
 
 char solve_r(char A[N][N], int i, int j, int dir, int lcnt, int ccnt) {
   move(dir, &i, &j, A);
   switch(A[i][j]) {
     case ' ':
-      if(lcnt == 0) {
-        A[i][j] = '|';
-        if(solve_r(A, i, j, dir, lcnt, ccnt)) {
-          A[i][j] = ' ';
-          return 1;
-        }
+      if(
+        mirror90(A, i, j, dir, lcnt, ccnt)
+        || (lcnt > 0 && (
+          mirror45(A, i, j, dir, lcnt, ccnt) || mirror135(A, i, j, dir, lcnt, ccnt)
+        ))
+      ) {
+        return 1;
       } else {
-        for(int goTo=0; goTo < 4; goTo++)
-          if (goTo != reverseDir(dir)) {
-            char m = mirror(dir, goTo);
-            A[i][j] = m;
-            if(m == '|' && solve_r(A, i, j, goTo, lcnt, ccnt)) {
-              A[i][j] = ' ';
-              return 1;
-            } else if(solve_r(A, i, j, goTo, lcnt-1, ccnt)) {
-              return 1;
-            }
-          }
+        A[i][j] = ' ';
+        return 0;
       }
-      A[i][j] = ' ';
-      return 0;
     case '*':
       if(ccnt == 1) return 1;
       A[i][j] = '%';
@@ -86,7 +88,7 @@ void solve(char A[N][N], int w, int h, int lcnt) {
     for(int j=1; j <= w; j++)
       if (A[i][j] == '*') ccnt++;
 
-  for(int i=lcnt; i <= lcnt && !solve_r(A, 2, 0, 0, i, ccnt); i++);
+  for(int i=lcnt/2; i <= lcnt && !solve_r(A, 2, 0, 0, i, ccnt); i++);
 
 
 }
