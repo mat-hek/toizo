@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
+#include <stdlib.h>
 
 #define N 102
 #define E 'x'
@@ -63,7 +65,10 @@ char solve_r(char A[N][N], int i, int j, int dir, int lcnt, int ccnt) {
       if(
         mirror90(A, i, j, dir, lcnt, ccnt)
         || (lcnt > 0 && (
-          mirror45(A, i, j, dir, lcnt, ccnt) || mirror135(A, i, j, dir, lcnt, ccnt)
+          rand()%2 ?
+            mirror45(A, i, j, dir, lcnt, ccnt) || mirror135(A, i, j, dir, lcnt, ccnt)
+          :
+            mirror135(A, i, j, dir, lcnt, ccnt) || mirror45(A, i, j, dir, lcnt, ccnt)
         ))
       ) {
         return 1;
@@ -88,7 +93,7 @@ void solve(char A[N][N], int w, int h, int lcnt) {
     for(int j=1; j <= w; j++)
       if (A[i][j] == '*') ccnt++;
 
-  for(int i=lcnt/2; i <= lcnt && !solve_r(A, 2, 0, 0, i, ccnt); i++);
+  for(int i=lcnt; i <= lcnt && !solve_r(A, 2, 0, 0, i, ccnt); i++);
 
 
 }
