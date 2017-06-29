@@ -6,6 +6,9 @@
 #define N 102
 #define E 'x'
 
+#define max(x, y) ((x) > (y) ? (x) : (y))
+#define min(x, y) ((x) > (y) ? (y) : (x))
+
 // void printBoard(char A[N][N], int w, int h) {
 //   for(int i=1; i<=h; i++) {
 //     for(int j=1; j<=w; j++)
@@ -93,8 +96,7 @@ void solve(char A[N][N], int w, int h, int lcnt) {
     for(int j=1; j <= w; j++)
       if (A[i][j] == '*') ccnt++;
 
-  for(int i=lcnt; i <= lcnt && !solve_r(A, 2, 0, 0, i, ccnt); i++);
-
+  for(int i=lcnt-2; i <= lcnt && !solve_r(A, 2, 0, 0, i, ccnt); i++);
 
 }
 
