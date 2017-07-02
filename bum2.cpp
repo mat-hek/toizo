@@ -6,8 +6,12 @@
 
 using namespace std;
 
-#define N 102
+#define W (w+2)
+#define H (h+2)
 #define E 'x'
+
+static int w;
+static int h;
 
 #define max(x, y) ((x) > (y) ? (x) : (y))
 #define min(x, y) ((x) > (y) ? (y) : (x))
@@ -27,12 +31,12 @@ inline static CameFrom mkCameFrom(int lcnt, char direction, int idx) {
 }
 
 int sr(int i, int j) {
-  return i*N+j;
+  return i*W+j;
 }
 
 void dsr(int v, int* i, int* j) {
-  *i = v/N;
-  *j = v%N;
+  *i = v/W;
+  *j = v%W;
 }
 
 // void printBoard(char* A, int w, int h) {
@@ -66,9 +70,9 @@ inline static char back_dir(char dir) {
 inline static int move(int dir, int i) {
   switch (dir) {
     case 0: return i + 1;
-    case 1: return i + N;
+    case 1: return i + W;
     case 2: return i - 1;
-    case 3: return i - N;
+    case 3: return i - W;
   }
   // *(int*)0 = 0;
   exit(-1);
@@ -132,8 +136,8 @@ void place_mirrors(char* A, int i, CameFrom* cf) {
 char find_crystal(char* A, int *ri, int *dir, int* lcnt) {
   int i = *ri;
   queue<int> q;
-  CameFrom* cf = (CameFrom*)malloc(N*N*sizeof(CameFrom));
-  for(int i=0; i < N*N; i++)
+  CameFrom* cf = (CameFrom*)malloc(W*H*sizeof(CameFrom));
+  for(int i=0; i < W*H; i++)
     cf[i] = mkCameFrom(-1, -1, -1);
 
   if(!visit_one_side_neighbours(A, &i, *dir, cf, &q, 0))
@@ -152,35 +156,23 @@ char find_crystal(char* A, int *ri, int *dir, int* lcnt) {
   return 1;
 }
 
-char solve(char* A, int w, int h, int lcnt) {
+char solve(char* A, int lcnt) {
   int ccnt = 0;
-  for(int i=1; i <= h; i++)
-    for(int j=1; j <= w; j++)
-      if (A[sr(i, j)] == '*') ccnt++;
+  for(int i=0; i<W*H; i++)
+      if (A[i] == '*') ccnt++;
 
   for(int i=sr(2, 0), dir=0; ccnt > 0 && find_crystal(A, &i, &dir, &lcnt); ccnt--);
 
-  if(ccnt == 0){
-    for(int i=1; i <= h; i++)
-      for(int j=1; j <= w; j++)
-        switch(A[sr(i, j)]) {
-          case '%': A[sr(i, j)] = '*'; break;
-          case '|': A[sr(i, j)] = ' '; break;
-        }
-    return 1;
-  } else {
-    for(int i=1; i <= h; i++)
-      for(int j=1; j <= w; j++)
-        switch(A[sr(i, j)]) {
-          case '%': A[sr(i, j)] = '*'; break;
-          case '|':
-          case '\\':
-          case '/':
-            A[sr(i, j)] = ' '; break;
-        }
-    return 0;
-  }
-
+  for(int i=0; i<W*H; i++)
+    switch(A[i]) {
+      case '%': A[i] = '*'; break;
+      case '|': A[i] = ' '; break;
+      case '/':
+      case '\\':
+        if(ccnt > 0) A[i] = ' ';
+        break;
+    }
+  return ccnt == 0;
 }
 
 
@@ -258,11 +250,10 @@ char brut_solve_r(char* A, int i, int j, int dir, int lcnt, int ccnt) {
   }
 }
 
-void brut_solve(char* A, int w, int h, int lcnt) {
+void brut_solve(char* A, int lcnt) {
   int ccnt = 0;
-  for(int i=1; i <= h; i++)
-    for(int j=1; j <= w; j++)
-      if (A[sr(i, j)] == '*') ccnt++;
+  for(int i=0; i < W*H; i++)
+    if (A[i] == '*') ccnt++;
 
   for(int i=lcnt-2; i <= lcnt && !brut_solve_r(A, 2, 0, 0, i, ccnt); i++);
 
@@ -271,19 +262,18 @@ void brut_solve(char* A, int w, int h, int lcnt) {
 
 
 int main() {
-  char* A = (char*)malloc(N*N);
-  memset(A, E, N*N);
-  int w, h, lcnt;
+  int lcnt;
   scanf("%d %d\n%d\n", &h, &w, &lcnt);
+  char* A = (char*)malloc(W*H);
+  memset(A, E, W*H);
   for(int i=1; i<=h; i++) {
     for(int j=1; j<=w; j++)
       scanf("%c", &A[sr(i, j)]);
     scanf("%*c");
   }
 
-  if(!solve(A, w, h, lcnt))
-    brut_solve(A, w, h, lcnt);
-
+  if(!solve(A, lcnt))
+    brut_solve(A, lcnt);
 
   printf("%d %d\n%d\n", h, w, lcnt);
   for(int i=1; i<=h; i++) {
