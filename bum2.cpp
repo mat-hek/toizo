@@ -118,14 +118,14 @@ inline static char visit_neighbours(
       || visit_one_side_neighbours(A, i, back_dir(dir), cf, q, lcnt, max_lcnt);
 }
 
-static queue<int> place_mirrors(char* A, int i, CameFrom* cf) {
+static void place_mirrors(char* A, int i, CameFrom* cf) {
   CameFrom cameFrom = cf[i];
-  queue<int> placed_mirrors;
+  // queue<int> placed_mirrors;
   A[i] = '%';
   for(int k = 0; cameFrom.idx != -1; cameFrom = cf[i], k++) {
     char dir = back_dir(cameFrom.direction);
     while(i != cameFrom.idx) {
-      placed_mirrors.push(i);
+      // placed_mirrors.push(i);
       i = move(dir, i);
       switch(A[i]) {
         case ' ': A[i] = '|'; break;
@@ -139,25 +139,30 @@ static queue<int> place_mirrors(char* A, int i, CameFrom* cf) {
       case 3: A[i] = '\\'; break;
     }
   }
-  return placed_mirrors;
+  // return placed_mirrors;
 }
 
-static void remove_mirrors(char* A, queue<int> placed_mirrors) {
-  A[placed_mirrors.front()] = '*';
-  placed_mirrors.pop();
-  for(; !placed_mirrors.empty(); placed_mirrors.pop()) {
-    A[placed_mirrors.front()] = ' ';
-  }
-}
+// static void remove_mirrors(char* A, queue<int> placed_mirrors) {
+//   A[placed_mirrors.front()] = '*';
+//   placed_mirrors.pop();
+//   for(; !placed_mirrors.empty(); placed_mirrors.pop()) {
+//     A[placed_mirrors.front()] = ' ';
+//   }
+// }
 
 static char find_crystal(char* A, int i, int dir, int lcnt, int ccnt);
 
 static char find_next_crystal(char* A, int i, int dir, CameFrom* cf, int lcnt, int ccnt) {
-  queue<int> mirrors = place_mirrors(A, i, cf);
-  if(ccnt > 0 && !find_crystal(A, i, dir, lcnt, ccnt)) {
-    remove_mirrors(A, mirrors);
+  char* Acp = (char*)malloc(W*H); memcpy(Acp, A, W*H);
+  place_mirrors(Acp, i, cf);
+  if(ccnt > 0 && !find_crystal(Acp, i, dir, lcnt, ccnt)) {
+    free(Acp);
     return 0;
-  } else return 1;
+  } else {
+    memcpy(A, Acp, W*H);
+    free(Acp);
+    return 1;
+  }
 }
 
 static char find_crystal(char* A, int i, int dir, int lcnt, int ccnt) {
@@ -187,7 +192,7 @@ static char find_crystal(char* A, int i, int dir, int lcnt, int ccnt) {
 static char solve(char* A, int lcnt) {
   int ccnt = 0;
   for(int i=0; i<W*H; i++)
-      if (A[i] == '*') ccnt++;
+    if (A[i] == '*') ccnt++;
 
   char found = find_crystal(A, sr(2, 0), 0, lcnt, ccnt);
 
