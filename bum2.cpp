@@ -39,29 +39,35 @@ void dsr(int v, int* i, int* j) {
   *j = v%W;
 }
 
-// void printBoard(char* A, int w, int h) {
-//   for(int i=1; i<=h; i++) {
-//     for(int j=1; j<=w; j++)
-//       printf("%c", A[sr(i, j)]);
-//     printf("\n");
-//   }
-// }
+void printIdx(int idx) {
+  int x, y;
+  dsr(idx, &x, &y);
+  printf("%d:%d\n", x, y);
+}
+
+void printBoard(char* A) {
+  for(int i=1; i<H-1; i++) {
+    for(int j=1; j<W-1; j++)
+      printf("%c", A[sr(i, j)]);
+    printf("\n");
+  }
+}
 
 
-// static void printCF(CameFrom* cf) {
-//   for(int i=0; i<10; i++) {
-//     for(int j=5; j<20; j++) {
-//       CameFrom cameFrom = cf[sr(i, j)];
-//       int x, y;
-//       dsr(cameFrom.idx, &x, &y);
-//       switch (cameFrom.lcnt) {
-//         case -1: printf("_________ "); break;
-//         default: printf("%d!%d:%02d:%02d ", cameFrom.lcnt, cameFrom.direction, x, y);
-//       }
-//     }
-//     printf("\n");
-//   }
-// }
+void printCF(CameFrom* cf) {
+  for(int i=0; i<H; i++) {
+    for(int j=0; j<W; j++) {
+      CameFrom cameFrom = cf[sr(i, j)];
+      int x, y;
+      dsr(cameFrom.idx, &x, &y);
+      switch (cameFrom.lcnt) {
+        case -1: printf("_________ "); break;
+        default: printf("%d!%d:%02d:%02d ", cameFrom.lcnt, cameFrom.direction, x, y);
+      }
+    }
+    printf("\n");
+  }
+}
 
 inline static char back_dir(char dir) {
   return (dir+2)%4;
@@ -79,21 +85,21 @@ inline static int move(int dir, int i) {
 }
 
 inline static char visit_one_side_neighbours(
-  char* A, int *ri, int dir, CameFrom* cf, queue<int> *q, int lcnt
+  char* A, int *ri, int dir, CameFrom* cf, queue<int> *q, int lcnt, int max_lcnt
 ) {
   int i = *ri;
   while(1) {
     i = move(dir, i);
     switch(A[i]) {
       case ' ':
-        if(cf[i].lcnt == -1) {
+        if(cf[i].lcnt == -1 && lcnt < max_lcnt) {
           cf[i] = mkCameFrom(lcnt, dir, *ri);
           q->push(i);
         }
         continue;
       case '|': continue;
+      case '%': continue;
       case '*':
-        A[i] = '%';
         cf[i] = mkCameFrom(lcnt, dir, *ri);
         *ri = i;
         return 1;
@@ -106,18 +112,20 @@ inline static char visit_one_side_neighbours(
 }
 
 inline static char visit_neighbours(
-  char* A, int *i, int dir, CameFrom* cf, queue<int> *q, int lcnt
+  char* A, int *i, int dir, CameFrom* cf, queue<int> *q, int lcnt, int max_lcnt
 ) {
-  return visit_one_side_neighbours(A, i, dir, cf, q, lcnt)
-      || visit_one_side_neighbours(A, i, back_dir(dir), cf, q, lcnt);
+  return visit_one_side_neighbours(A, i, dir, cf, q, lcnt, max_lcnt)
+      || visit_one_side_neighbours(A, i, back_dir(dir), cf, q, lcnt, max_lcnt);
 }
 
-void place_mirrors(char* A, int i, CameFrom* cf) {
-  while(1) {
-    CameFrom cameFrom = cf[i];
-    if(cameFrom.idx == -1) break;
+static queue<int> place_mirrors(char* A, int i, CameFrom* cf) {
+  CameFrom cameFrom = cf[i];
+  queue<int> placed_mirrors;
+  A[i] = '%';
+  for(int k = 0; cameFrom.idx != -1; cameFrom = cf[i], k++) {
     char dir = back_dir(cameFrom.direction);
     while(i != cameFrom.idx) {
+      placed_mirrors.push(i);
       i = move(dir, i);
       switch(A[i]) {
         case ' ': A[i] = '|'; break;
@@ -131,37 +139,57 @@ void place_mirrors(char* A, int i, CameFrom* cf) {
       case 3: A[i] = '\\'; break;
     }
   }
+  return placed_mirrors;
 }
 
-char find_crystal(char* A, int *ri, int *dir, int* lcnt) {
-  int i = *ri;
+static void remove_mirrors(char* A, queue<int> placed_mirrors) {
+  A[placed_mirrors.front()] = '*';
+  placed_mirrors.pop();
+  for(; !placed_mirrors.empty(); placed_mirrors.pop()) {
+    A[placed_mirrors.front()] = ' ';
+  }
+}
+
+static char find_crystal(char* A, int i, int dir, int lcnt, int ccnt);
+
+static char find_next_crystal(char* A, int i, int dir, CameFrom* cf, int lcnt, int ccnt) {
+  queue<int> mirrors = place_mirrors(A, i, cf);
+  if(ccnt > 0 && !find_crystal(A, i, dir, lcnt, ccnt)) {
+    remove_mirrors(A, mirrors);
+    return 0;
+  } else return 1;
+}
+
+static char find_crystal(char* A, int i, int dir, int lcnt, int ccnt) {
   queue<int> q;
   CameFrom* cf = (CameFrom*)malloc(W*H*sizeof(CameFrom));
   for(int i=0; i < W*H; i++)
     cf[i] = mkCameFrom(-1, -1, -1);
 
-  if(!visit_one_side_neighbours(A, &i, *dir, cf, &q, 0))
-    while(1) {
-      if(q.empty()) return 0;
-      i = q.front();
-      q.pop();
-      if(cf[i].lcnt == *lcnt) return 0;
-      if(visit_neighbours(A, &i, cf[i].direction^1, cf, &q, cf[i].lcnt + 1)) break;
+  if(visit_one_side_neighbours(A, &i, dir, cf, &q, 0, lcnt)
+  && find_next_crystal(A, i, dir, cf, lcnt, ccnt - 1)) {
+    free(cf);
+    return 1;
+  }
+  while(!q.empty()) {
+    i = q.front();
+    q.pop();
+    if(visit_neighbours(A, &i, cf[i].direction^1, cf, &q, cf[i].lcnt + 1, lcnt)
+    && find_next_crystal(A, i, cf[i].direction, cf, lcnt - cf[i].lcnt, ccnt - 1)) {
+      free(cf);
+      return 1;
     }
-
-  *ri = i;
-  *lcnt = *lcnt - cf[i].lcnt;
-  *dir = cf[i].direction;
-  place_mirrors(A, i, cf);
-  return 1;
+  }
+  free(cf);
+  return 0;
 }
 
-char solve(char* A, int lcnt) {
+static char solve(char* A, int lcnt) {
   int ccnt = 0;
   for(int i=0; i<W*H; i++)
       if (A[i] == '*') ccnt++;
 
-  for(int i=sr(2, 0), dir=0; ccnt > 0 && find_crystal(A, &i, &dir, &lcnt); ccnt--);
+  char found = find_crystal(A, sr(2, 0), 0, lcnt, ccnt);
 
   for(int i=0; i<W*H; i++)
     switch(A[i]) {
@@ -169,10 +197,10 @@ char solve(char* A, int lcnt) {
       case '|': A[i] = ' '; break;
       case '/':
       case '\\':
-        if(ccnt > 0) A[i] = ' ';
+        if(!found) A[i] = ' ';
         break;
     }
-  return ccnt == 0;
+  return found;
 }
 
 
@@ -198,7 +226,7 @@ inline static void brut_move(int where, int* i, int* j, char* A) {
   }
 }
 
-char brut_solve_r(char* A, int i, int j, int dir, int lcnt, int ccnt);
+static char brut_solve_r(char* A, int i, int j, int dir, int lcnt, int ccnt);
 
 inline static char brut_mirror45(char* A, int i, int j, int dir, int lcnt, int ccnt) {
   A[sr(i, j)] = '/';
@@ -220,7 +248,7 @@ inline static char brut_mirror90(char* A, int i, int j, int dir, int lcnt, int c
   }
 }
 
-char brut_solve_r(char* A, int i, int j, int dir, int lcnt, int ccnt) {
+static char brut_solve_r(char* A, int i, int j, int dir, int lcnt, int ccnt) {
   brut_move(dir, &i, &j, A);
   char r;
   switch(A[sr(i, j)]) {
@@ -272,8 +300,9 @@ int main() {
     scanf("%*c");
   }
 
-  if(!solve(A, lcnt))
-    brut_solve(A, lcnt);
+  solve(A, lcnt);
+  // if(!solve(A, lcnt))
+    // brut_solve(A, lcnt);
 
   printf("%d %d\n%d\n", h, w, lcnt);
   for(int i=1; i<=h; i++) {
